@@ -1,0 +1,57 @@
+name: CI
+
+# Runs on every pull request into main, and on every push to main.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Least privilege: the workflow can only read the repository contents.
+permissions:
+  contents: read
+
+# A new push to the same PR cancels the older, now outdated run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: Node checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the pnpm version from "packageManager" in package.json.
+      - uses: pnpm/action-setup@v4
+
+      # Reads the Node version from .nvmrc.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # --frozen-lockfile fails if package.json and pnpm-lock.yaml disagree.
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  terraform:
+    name: Terraform checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+
+      - run: terraform fmt -check -recursive
+      # -backend=false: only download providers, no state and no AWS credentials needed.
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate
