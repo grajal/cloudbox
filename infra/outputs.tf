@@ -19,3 +19,18 @@ output "issuer_url" {
   description = "Token issuer URL, used by API Gateway's JWT authorizer to validate tokens."
   value       = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.main.id}"
 }
+
+output "site_url" {
+  description = "Public URL of the web app."
+  value       = "https://${aws_cloudfront_distribution.web.domain_name}"
+}
+
+output "web_bucket_name" {
+  description = "S3 bucket that holds the built web app (used by the deploy script)."
+  value       = aws_s3_bucket.web.id
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID (used for cache invalidation)."
+  value       = aws_cloudfront_distribution.web.id
+}
