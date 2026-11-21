@@ -34,3 +34,8 @@ output "cloudfront_distribution_id" {
   description = "CloudFront distribution ID (used for cache invalidation)."
   value       = aws_cloudfront_distribution.web.id
 }
+
+output "api_url" {
+  description = "Base URL of the HTTP API (the web app calls this)."
+  value       = aws_apigatewayv2_api.main.api_endpoint
+}
