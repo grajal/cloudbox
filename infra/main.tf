@@ -8,6 +8,12 @@ terraform {
       version = "~> 6.0" # any 6.x release, never a new major version automatically
     }
 
+    # Zips the Lambda bundles (apps/api/dist/<name>/) so Terraform can upload them.
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.0"
+    }
+
     # Generates random values (used for the globally unique Cognito domain prefix).
     random = {
       source  = "hashicorp/random"
