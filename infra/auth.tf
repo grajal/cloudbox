@@ -64,9 +64,9 @@ resource "aws_cognito_user_pool_client" "web" {
   allowed_oauth_scopes                 = ["openid", "email", "profile"]
   supported_identity_providers         = ["COGNITO"] # add "Google" here when we federate later
 
-  # Cognito only redirects to URLs on these lists. The CloudFront URL is added in the hosting feature.
-  callback_urls = var.callback_urls
-  logout_urls   = var.logout_urls
+  # Cognito only redirects to URLs on these lists: localhost for development plus the CloudFront site.
+  callback_urls = concat(var.callback_urls, ["https://${aws_cloudfront_distribution.web.domain_name}/callback"])
+  logout_urls   = concat(var.logout_urls, ["https://${aws_cloudfront_distribution.web.domain_name}/"])
 
   # Only the refresh-token grant is enabled; password flows are not needed with Managed Login.
   explicit_auth_flows = ["ALLOW_REFRESH_TOKEN_AUTH"]

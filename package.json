@@ -12,7 +12,8 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "deploy:web": "bash scripts/deploy-web.sh"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
