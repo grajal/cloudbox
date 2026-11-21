@@ -21,13 +21,14 @@ pnpm dev               # web app at http://localhost:5173
 pnpm test              # unit tests
 pnpm build             # web build + Lambda bundles in apps/api/dist/<handler>/index.mjs
 pnpm lint
+pnpm deploy:web        # build the web app and publish it to S3 + CloudFront (needs `aws sso login`)
 ```
 
 ## Roadmap
 
 - [x] 0. Project scaffold
-- [ ] 1. Auth: Cognito + first Terraform
-- [ ] 2. Host the SPA on S3 + CloudFront (OAC)
+- [x] 1. Auth: Cognito + first Terraform
+- [x] 2. Host the SPA on S3 + CloudFront (OAC)
 - [ ] 3. API Gateway + first deployed Lambda
 - [ ] 4. Folders & file metadata (DynamoDB)
 - [ ] 5. Upload/download (S3 presigned URLs)
