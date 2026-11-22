@@ -1,33 +1,30 @@
 import { useAuth } from './auth/AuthProvider';
-import { useMe } from './api/useMe';
-
-const button =
-  'rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400';
-
-// Calls the protected GET /me endpoint to prove the token reaches the API and is accepted.
-function ApiCheck() {
-  const result = useMe();
-
-  if (result.status === 'loading')
-    return <p className="text-sm text-slate-500">Calling the API…</p>;
-
-  if (result.status === 'error') {
-    return (
-      <p role="alert" className="text-sm text-red-600">
-        API error: {result.message}
-      </p>
-    );
-  }
-
-  return (
-    <p className="text-sm text-slate-600">
-      API says your user ID is <code className="rounded bg-slate-200 px-1">{result.me.userId}</code>
-    </p>
-  );
-}
+import { FileBrowser } from './browser/FileBrowser';
+import { buttonPrimary, buttonSecondary } from './ui';
 
 export default function App() {
   const { state, signIn, signOut } = useAuth();
+
+  if (state.status === 'signedIn') {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <header className="border-b border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
+            <img src="/cloud.svg" alt="" className="h-8 w-8" />
+            <h1 className="flex-1 text-xl font-bold tracking-tight">CloudBox</h1>
+            <span className="hidden text-sm text-slate-600 sm:inline">{state.email}</span>
+            <button type="button" className={buttonSecondary} onClick={() => void signOut()}>
+              Sign out
+            </button>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-3xl px-4 py-6">
+          <FileBrowser />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4 text-slate-900">
@@ -46,20 +43,8 @@ export default function App() {
               {state.error}
             </p>
           )}
-          <button type="button" className={button} onClick={() => void signIn()}>
+          <button type="button" className={buttonPrimary} onClick={() => void signIn()}>
             Sign in
-          </button>
-        </>
-      )}
-
-      {state.status === 'signedIn' && (
-        <>
-          <p className="text-slate-600">
-            Signed in as <strong>{state.email}</strong>
-          </p>
-          <ApiCheck />
-          <button type="button" className={button} onClick={() => void signOut()}>
-            Sign out
           </button>
         </>
       )}

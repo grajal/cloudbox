@@ -39,3 +39,8 @@ output "api_url" {
   description = "Base URL of the HTTP API (the web app calls this)."
   value       = aws_apigatewayv2_api.main.api_endpoint
 }
+
+output "table_name" {
+  description = "DynamoDB table holding folders and files."
+  value       = aws_dynamodb_table.main.name
+}

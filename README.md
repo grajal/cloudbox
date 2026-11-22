@@ -30,7 +30,7 @@ pnpm deploy:web        # build the web app and publish it to S3 + CloudFront (ne
 - [x] 1. Auth: Cognito + first Terraform
 - [x] 2. Host the SPA on S3 + CloudFront (OAC)
 - [x] 3. API Gateway + first deployed Lambda
-- [ ] 4. Folders & file metadata (DynamoDB)
+- [x] 4. Folders & file metadata (DynamoDB)
 - [ ] 5. Upload/download (S3 presigned URLs)
 - [ ] 6. Storage quotas
 - [ ] 7. Thumbnails (S3 events → EventBridge → SQS → Lambda)
