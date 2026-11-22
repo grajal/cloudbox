@@ -3,9 +3,35 @@
 
 locals {
   # key = handler file name (apps/api/src/handlers/<key>.ts), also the folder in apps/api/dist/.
+  #
+  # table_actions / index_actions: the DynamoDB permissions this function gets, and nothing more.
   functions = {
-    health = { method = "GET", path = "/health", auth = false } # public: uptime checks
-    me     = { method = "GET", path = "/me", auth = true }      # needs a valid Cognito token
+    health = { method = "GET", path = "/health", auth = false, table_actions = [], index_actions = [] }
+    me     = { method = "GET", path = "/me", auth = true, table_actions = [], index_actions = [] }
+
+    createFolder = {
+      method        = "POST"
+      path          = "/folders"
+      auth          = true
+      table_actions = ["dynamodb:GetItem", "dynamodb:PutItem"] # check the parent, write the folder
+      index_actions = []
+    }
+
+    listChildren = {
+      method        = "GET"
+      path          = "/folders/{id}/children"
+      auth          = true
+      table_actions = ["dynamodb:GetItem"] # check the folder exists
+      index_actions = ["dynamodb:Query"]   # list its children through GSI1
+    }
+
+    renameItem = {
+      method        = "PATCH"
+      path          = "/items/{id}"
+      auth          = true
+      table_actions = ["dynamodb:GetItem", "dynamodb:UpdateItem"]
+      index_actions = []
+    }
   }
 
   # Browser origins allowed to call the API (CORS).
@@ -68,6 +94,37 @@ resource "aws_iam_role_policy" "lambda_logs" {
   policy = data.aws_iam_policy_document.lambda_logs[each.key].json
 }
 
+# DynamoDB access, only for the functions that declare actions in local.functions.
+data "aws_iam_policy_document" "lambda_dynamodb" {
+  for_each = { for name, f in local.functions : name => f if length(f.table_actions) + length(f.index_actions) > 0 }
+
+  dynamic "statement" {
+    for_each = length(each.value.table_actions) > 0 ? [1] : []
+    content {
+      sid       = "Table"
+      actions   = each.value.table_actions
+      resources = [aws_dynamodb_table.main.arn]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = length(each.value.index_actions) > 0 ? [1] : []
+    content {
+      sid       = "Index"
+      actions   = each.value.index_actions
+      resources = ["${aws_dynamodb_table.main.arn}/index/GSI1"] # indexes have their own ARN
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_dynamodb" {
+  for_each = data.aws_iam_policy_document.lambda_dynamodb
+
+  name   = "dynamodb-access"
+  role   = aws_iam_role.lambda[each.key].id
+  policy = each.value.json
+}
+
 resource "aws_lambda_function" "api" {
   for_each = local.functions
 
@@ -86,10 +143,15 @@ resource "aws_lambda_function" "api" {
   environment {
     variables = {
       NODE_OPTIONS = "--enable-source-maps" # stack traces point at the TypeScript source
+      TABLE_NAME   = aws_dynamodb_table.main.name
     }
   }
 
-  depends_on = [aws_cloudwatch_log_group.lambda, aws_iam_role_policy.lambda_logs]
+  depends_on = [
+    aws_cloudwatch_log_group.lambda,
+    aws_iam_role_policy.lambda_logs,
+    aws_iam_role_policy.lambda_dynamodb,
+  ]
 }
 
 # ---------- API Gateway ----------
@@ -101,7 +163,7 @@ resource "aws_apigatewayv2_api" "main" {
   # CORS: the browser asks permission (preflight) before calling an API on another origin.
   cors_configuration {
     allow_origins = local.web_origins
-    allow_methods = ["GET"] # widen when we add POST/PUT/DELETE endpoints
+    allow_methods = ["GET", "POST", "PATCH"] # widen when we add PUT/DELETE endpoints
     allow_headers = ["authorization", "content-type"]
     max_age       = 3600
   }
@@ -162,5 +224,6 @@ resource "aws_lambda_permission" "api" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.api[each.key].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/${each.value.method}${each.value.path}"
+  # Path parameters like {id} become * so the pattern matches whatever the real path is.
+  source_arn = "${aws_apigatewayv2_api.main.execution_arn}/*/${each.value.method}${replace(each.value.path, "/\\{[^}]+\\}/", "*")}"
 }
