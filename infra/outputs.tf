@@ -44,3 +44,8 @@ output "table_name" {
   description = "DynamoDB table holding folders and files."
   value       = aws_dynamodb_table.main.name
 }
+
+output "files_bucket_name" {
+  description = "S3 bucket that holds the files of the users of the app"
+  value       = aws_s3_bucket.files.id
+}
