@@ -5,32 +5,36 @@ locals {
   # key = handler file name (apps/api/src/handlers/<key>.ts), also the folder in apps/api/dist/.
   #
   # table_actions / index_actions: the DynamoDB permissions this function gets, and nothing more.
+  # bucket_actions: the S3 permissions this function gets.
   functions = {
-    health = { method = "GET", path = "/health", auth = false, table_actions = [], index_actions = [] }
-    me     = { method = "GET", path = "/me", auth = true, table_actions = [], index_actions = [] }
+    health = { method = "GET", path = "/health", auth = false, table_actions = [], index_actions = [], bucket_actions = [] }
+    me     = { method = "GET", path = "/me", auth = true, table_actions = [], index_actions = [], bucket_actions = [] }
 
     createFolder = {
-      method        = "POST"
-      path          = "/folders"
-      auth          = true
-      table_actions = ["dynamodb:GetItem", "dynamodb:PutItem"] # check the parent, write the folder
-      index_actions = []
+      method         = "POST"
+      path           = "/folders"
+      auth           = true
+      table_actions  = ["dynamodb:GetItem", "dynamodb:PutItem"] # check the parent, write the folder
+      index_actions  = []
+      bucket_actions = []
     }
 
     listChildren = {
-      method        = "GET"
-      path          = "/folders/{id}/children"
-      auth          = true
-      table_actions = ["dynamodb:GetItem"] # check the folder exists
-      index_actions = ["dynamodb:Query"]   # list its children through GSI1
+      method         = "GET"
+      path           = "/folders/{id}/children"
+      auth           = true
+      table_actions  = ["dynamodb:GetItem"] # check the folder exists
+      index_actions  = ["dynamodb:Query"]   # list its children through GSI1
+      bucket_actions = []
     }
 
     renameItem = {
-      method        = "PATCH"
-      path          = "/items/{id}"
-      auth          = true
-      table_actions = ["dynamodb:GetItem", "dynamodb:UpdateItem"]
-      index_actions = []
+      method         = "PATCH"
+      path           = "/items/{id}"
+      auth           = true
+      table_actions  = ["dynamodb:GetItem", "dynamodb:UpdateItem"]
+      index_actions  = []
+      bucket_actions = []
     }
   }
 
@@ -125,6 +129,27 @@ resource "aws_iam_role_policy" "lambda_dynamodb" {
   policy = each.value.json
 }
 
+data "aws_iam_policy_document" "lambda_s3" {
+  for_each = {
+    for name, f in local.functions : name => f
+    if length(f.bucket_actions) > 0
+  }
+
+  statement {
+    sid       = "S3"
+    actions   = each.value.bucket_actions
+    resources = ["${aws_s3_bucket.files.arn}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_s3" {
+  for_each = data.aws_iam_policy_document.lambda_s3
+
+  name   = "s3-access"
+  role   = aws_iam_role.lambda[each.key].id
+  policy = each.value.json
+}
+
 resource "aws_lambda_function" "api" {
   for_each = local.functions
 
@@ -144,6 +169,7 @@ resource "aws_lambda_function" "api" {
     variables = {
       NODE_OPTIONS = "--enable-source-maps" # stack traces point at the TypeScript source
       TABLE_NAME   = aws_dynamodb_table.main.name
+      BUCKET_NAME  = aws_s3_bucket.files.id
     }
   }
 
@@ -151,6 +177,7 @@ resource "aws_lambda_function" "api" {
     aws_cloudwatch_log_group.lambda,
     aws_iam_role_policy.lambda_logs,
     aws_iam_role_policy.lambda_dynamodb,
+    aws_iam_role_policy.lambda_s3
   ]
 }
 
