@@ -7,7 +7,7 @@ export const ItemId = z.uuid();
 /** Where an item lives: the virtual root or a folder's id. */
 export const ParentId = z.union([z.literal(ROOT_ID), ItemId]);
 
-const ItemName = z
+export const ItemName = z
   .string()
   .trim()
   .min(1, 'Name cannot be empty')
@@ -22,6 +22,8 @@ export const Item = z.object({
   type: ItemType,
   name: z.string(),
   parentId: ParentId,
+  size: z.int().optional(),
+  contentType: z.string().optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
